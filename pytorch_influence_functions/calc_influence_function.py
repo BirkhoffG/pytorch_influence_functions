@@ -6,6 +6,7 @@ import datetime
 import numpy as np
 import copy
 import logging
+from joblib import Parallel, delayed
 
 from pathlib import Path
 from pytorch_influence_functions.influence_function import s_test, grad_z
@@ -45,7 +46,8 @@ def calc_s_test(model, test_loader, train_loader, save=False, gpu=-1,
         logging.info("ATTENTION: not saving s_test files.")
 
     s_tests = []
-    for i in range(start, len(test_loader.dataset)):
+
+    def step(i):
         z_test, t_test = test_loader.dataset[i]
         z_test = test_loader.collate_fn([z_test])
         t_test = test_loader.collate_fn([t_test])
@@ -62,6 +64,28 @@ def calc_s_test(model, test_loader, train_loader, save=False, gpu=-1,
             s_tests.append(s_test_vec)
         display_progress(
             "Calc. z_test (s_test): ", i-start, len(test_loader.dataset)-start)
+
+    Parallel(n_jobs=-1, max_nbytes=None, verbose=False)(
+        delayed(step)(
+            i=i
+        ) for i in range(start, len(test_loader.dataset))
+    )
+        # z_test, t_test = test_loader.dataset[i]
+        # z_test = test_loader.collate_fn([z_test])
+        # t_test = test_loader.collate_fn([t_test])
+
+        # s_test_vec = calc_s_test_single(model, z_test, t_test, train_loader,
+        #                                 gpu, damp, scale, recursion_depth, r)
+
+        # if save:
+        #     s_test_vec = [s.cpu() for s in s_test_vec]
+        #     torch.save(
+        #         s_test_vec,
+        #         save.joinpath(f"{i}_recdep{recursion_depth}_r{r}.s_test"))
+        # else:
+        #     s_tests.append(s_test_vec)
+        # display_progress(
+        #     "Calc. z_test (s_test): ", i-start, len(test_loader.dataset)-start)
 
     return s_tests, save
 
@@ -130,7 +154,8 @@ def calc_grad_z(model, train_loader, save_pth=False, gpu=-1, start=0):
         logging.info("ATTENTION: Not saving grad_z files!")
 
     grad_zs = []
-    for i in range(start, len(train_loader.dataset)):
+
+    def step(i):
         z, t = train_loader.dataset[i]
         z = train_loader.collate_fn([z])
         t = train_loader.collate_fn([t])
@@ -142,6 +167,12 @@ def calc_grad_z(model, train_loader, save_pth=False, gpu=-1, start=0):
             grad_zs.append(grad_z_vec)
         display_progress(
             "Calc. grad_z: ", i-start, len(train_loader.dataset)-start)
+    
+    Parallel(n_jobs=-1, max_nbytes=None, verbose=False)(
+        delayed(step)(
+            i=i
+        ) for i in range(start, len(train_loader.dataset))
+    )
 
     return grad_zs, save_pth
 

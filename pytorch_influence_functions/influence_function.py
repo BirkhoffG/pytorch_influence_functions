@@ -67,7 +67,8 @@ def calc_loss(y, t):
     # if dim == [0, 1, 3] then dim=0; else dim=1
     ####################
     # y = torch.nn.functional.log_softmax(y, dim=0)
-    y = torch.nn.functional.log_softmax(y)
+    # y = torch.nn.functional.log_softmax(y)
+    t = t.view(-1)
     loss = torch.nn.functional.nll_loss(
         y, t, weight=None, reduction='mean')
     return loss
