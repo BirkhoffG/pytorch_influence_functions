@@ -168,7 +168,7 @@ def calc_grad_z(model, train_loader, save_pth=False, gpu=-1, start=0):
         display_progress(
             "Calc. grad_z: ", i-start, len(train_loader.dataset)-start)
     
-    Parallel(n_jobs=-1, max_nbytes=None, verbose=False)(
+    Parallel(n_jobs=8, max_nbytes=None, verbose=False)(
         delayed(step)(
             i=i
         ) for i in range(start, len(train_loader.dataset))
