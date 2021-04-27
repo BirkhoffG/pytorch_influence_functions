@@ -65,7 +65,7 @@ def calc_s_test(model, test_loader, train_loader, save=False, gpu=-1,
         display_progress(
             "Calc. z_test (s_test): ", i-start, len(test_loader.dataset)-start)
 
-    Parallel(n_jobs=-1, max_nbytes=None, verbose=False)(
+    Parallel(n_jobs=1, max_nbytes=None, verbose=False)(
         delayed(step)(
             i=i
         ) for i in range(start, len(test_loader.dataset))
@@ -168,7 +168,7 @@ def calc_grad_z(model, train_loader, save_pth=False, gpu=-1, start=0):
         display_progress(
             "Calc. grad_z: ", i-start, len(train_loader.dataset)-start)
     
-    Parallel(n_jobs=8, max_nbytes=None, verbose=False)(
+    Parallel(n_jobs=1, max_nbytes=None, verbose=False)(
         delayed(step)(
             i=i
         ) for i in range(start, len(train_loader.dataset))
@@ -201,7 +201,7 @@ def load_s_test(s_test_dir=Path("./s_test/"), s_test_id=0, r_sample_size=10,
 
     s_test = []
     logging.info(f"Loading s_test from: {s_test_dir} ...")
-    num_s_test_files = len(s_test_dir.glob("*.s_test"))
+    num_s_test_files = len(list(s_test_dir.glob("*.s_test")))
     if num_s_test_files != r_sample_size:
         logging.warn("Load Influence Data: number of s_test sample files"
                      " mismatches the available samples")
@@ -210,7 +210,7 @@ def load_s_test(s_test_dir=Path("./s_test/"), s_test_id=0, r_sample_size=10,
     ########################
     for i in range(num_s_test_files):
         s_test.append(
-            torch.load(s_test_dir / str(s_test_id) + f"_{i}.s_test"))
+            torch.load(s_test_dir / f"{s_test_id}_{i}.s_test"))
         display_progress("s_test files loaded: ", i, r_sample_size)
 
     #########################
@@ -247,14 +247,14 @@ def load_grad_z(grad_z_dir=Path("./grad_z/"), train_dataset_size=-1):
 
     grad_z_vecs = []
     logging.info(f"Loading grad_z from: {grad_z_dir} ...")
-    available_grad_z_files = len(grad_z_dir.glob("*.grad_z"))
+    available_grad_z_files = len(list(grad_z_dir.glob("*.grad_z")))
     if available_grad_z_files != train_dataset_size:
         logging.warn("Load Influence Data: number of grad_z files mismatches"
                      " the dataset size")
         if -1 == train_dataset_size:
             train_dataset_size = available_grad_z_files
     for i in range(train_dataset_size):
-        grad_z_vecs.append(torch.load(grad_z_dir / str(i) + ".grad_z"))
+        grad_z_vecs.append(torch.load(grad_z_dir / f"{i}.grad_z"))
         display_progress("grad_z files loaded: ", i, train_dataset_size)
 
     return grad_z_vecs
@@ -276,7 +276,7 @@ def calc_influence_function(train_dataset_size, grad_z_vecs=None,
         harmful: list of float, influences sorted by harmfulness
         helpful: list of float, influences sorted by helpfulness"""
     if not grad_z_vecs and not e_s_test:
-        grad_z_vecs = load_grad_z()
+        grad_z_vecs = load_grad_z(train_dataset_size=train_dataset_size)
         e_s_test, _ = load_s_test(train_dataset_size=train_dataset_size)
 
     if (len(grad_z_vecs) != train_dataset_size):
@@ -553,15 +553,18 @@ def calc_all_grad_then_test(config, model, train_loader, test_loader):
 
     influence_results = {}
 
-    calc_s_test(model, test_loader, train_loader, s_test_outdir,
-                config['gpu'], config['damp'], config['scale'],
-                config['recursion_depth'], config['r_averaging'],
-                config['test_start_index'])
-    calc_grad_z(model, train_loader, grad_z_outdir, config['gpu'],
-                config['test_start_index'])
-
+    # calc_s_test(model, test_loader, train_loader, s_test_outdir,
+    #             config['gpu'], config['damp'], config['scale'],
+    #             config['recursion_depth'], config['r_averaging'],
+    #             config['test_start_index'])
+    # calc_grad_z(model, train_loader, grad_z_outdir, config['gpu'],
+    #             config['test_start_index'])
     train_dataset_len = len(train_loader.dataset)
-    influences, harmful, helpful = calc_influence_function(train_dataset_len)
+    grad_z_vecs = load_grad_z(grad_z_outdir, train_dataset_size=train_dataset_len)
+    e_s_test, _ = load_s_test(s_test_outdir, train_dataset_size=train_dataset_len)
+
+    influences, harmful, helpful = calc_influence_function(
+        train_dataset_len, grad_z_vecs=grad_z_vecs, e_s_test=e_s_test)
 
     influence_results['influences'] = influences
     influence_results['harmful'] = harmful
