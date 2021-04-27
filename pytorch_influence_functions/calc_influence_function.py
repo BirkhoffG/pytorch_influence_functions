@@ -553,12 +553,12 @@ def calc_all_grad_then_test(config, model, train_loader, test_loader):
 
     influence_results = {}
 
-    # calc_s_test(model, test_loader, train_loader, s_test_outdir,
-    #             config['gpu'], config['damp'], config['scale'],
-    #             config['recursion_depth'], config['r_averaging'],
-    #             config['test_start_index'])
-    # calc_grad_z(model, train_loader, grad_z_outdir, config['gpu'],
-    #             config['test_start_index'])
+    calc_s_test(model, test_loader, train_loader, s_test_outdir,
+                config['gpu'], config['damp'], config['scale'],
+                config['recursion_depth'], config['r_averaging'],
+                config['test_start_index'])
+    calc_grad_z(model, train_loader, grad_z_outdir, config['gpu'],
+                config['test_start_index'])
     train_dataset_len = len(train_loader.dataset)
     grad_z_vecs = load_grad_z(grad_z_outdir, train_dataset_size=train_dataset_len)
     e_s_test, _ = load_s_test(s_test_outdir, train_dataset_size=train_dataset_len)
